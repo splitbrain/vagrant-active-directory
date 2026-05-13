@@ -7,10 +7,10 @@ param
 
 Install-ADDSForest `
 -DatabasePath "C:\Windows\NTDS" `
--DomainMode Win2012R2 `
+-DomainMode WinThreshold `
 -DomainName "$domainName" `
 -DomainNetbiosName "$domainNetbiosName" `
--ForestMode Win2012R2 `
+-ForestMode WinThreshold `
 -InstallDns `
 -LogPath "C:\Windows\NTDS" `
 -NoRebootOnCompletion `
