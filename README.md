@@ -34,7 +34,7 @@ For **SSL and TLS** a self-signed certificate is generated when the machine star
 
     vagrant halt
 
-The box is based on the official Windows Server 2022 Trial images by Microsoft. The installation is **valid for 180 days**. You can simply destroy the machine and set it up again for another trial period.
+The box is based on the official Windows Server 2025 Trial images by Microsoft. The installation is **valid for 180 days**. You can simply destroy the machine and set it up again for another trial period.
 
     vagrant destroy
 
