@@ -20,19 +20,35 @@ Vagrant.configure("2") do |config|
     cfg.winrm.basic_auth_only = true
 
     cfg.vm.communicator = "winrm"
-    cfg.vm.network :forwarded_port, guest: 5985, host: 5985, id: "winrm", auto_correct: true
-    cfg.vm.network :forwarded_port, guest: 22, host: 2222, id: "ssh", auto_correct: true
-    cfg.vm.network :forwarded_port, guest: 3389, host: 3389, id: "rdp", auto_correct: true
+    # The private network IP is how RDP/LDAP/LDAPS are reached from the host.
     cfg.vm.network :private_network, ip: "192.168.56.5"
 
-    cfg.vm.network :forwarded_port, guest: 389, host: 7389, id: "ldap", auto_correct: true
-    cfg.vm.network :forwarded_port, guest: 636, host: 7636, id: "ldaps", auto_correct: true
+    # Upload scripts to C:\vagrant\scripts. Needed for libvirt where the
+    # default synced folder is disabled. Redundant on VirtualBox (covered by
+    # the synced folder) but cheap (<1s).
+    cfg.vm.provision "file", source: "scripts", destination: "C:\\vagrant\\scripts"
 
     cfg.vm.provision "shell", path: "scripts/pre_ad.ps1", privileged: false
     cfg.vm.provision "shell", reboot: true
     cfg.vm.provision "shell", path: "scripts/mid_ad.ps1", privileged: false, args: "'#{hostname}' '#{domain_fqdn}' '#{domain_netbios}' '#{domain_safemode_password}'"
     cfg.vm.provision "shell", reboot: true
     cfg.vm.provision "shell", path: "scripts/post_ad.ps1", privileged: false, args: "'#{domain_fqdn}'"
+
+    # Export the self-signed cert from the guest to the host repo root.
+    # Works for both providers: with VirtualBox's synced folder the file is
+    # already on the host, but downloading via WinRM keeps the libvirt path
+    # working too without depending on synced folders.
+    cfg.trigger.after :up, :reload do |trigger|
+      trigger.name = "Export cert.der to host"
+      trigger.ruby do |env, machine|
+        guest_path = "C:\\vagrant\\cert.der"
+        host_path = File.expand_path("cert.der", File.dirname(__FILE__))
+        if machine.communicate.test("Test-Path '#{guest_path}'")
+          machine.communicate.download(guest_path, host_path)
+          machine.ui.success("Exported #{host_path}")
+        end
+      end
+    end
 
     cfg.vm.provider "virtualbox" do |vb, override|
       vb.name = vmname
@@ -46,6 +62,19 @@ Vagrant.configure("2") do |config|
       vb.customize ["modifyvm", :id, "--macaddress2", "auto"]
       vb.customize ["modifyvm", :id, "--paravirtprovider", "hyperv"]
       vb.customize ["storagectl", :id, "--name", "SATA Controller", "--hostiocache", "on"]
+    end
+
+    cfg.vm.provider "libvirt" do |lv, override|
+      lv.memory = 4096
+      lv.cpus = 2
+      lv.driver = "kvm"
+      lv.disk_bus = "virtio"
+      lv.nic_model_type = "virtio"
+      lv.video_type = "vga"
+      lv.graphics_type = "vnc"
+      # Default synced folders on libvirt + Windows need extra setup (SMB/virtio-fs);
+      # disable and rely on the top-level file provisioner instead.
+      override.vm.synced_folder ".", "/vagrant", disabled: true
     end
   end
 end

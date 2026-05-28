@@ -10,19 +10,27 @@ To do this it provides a Vagrant file that lets you spin up a preconfigured virt
 
 This vagrant box provides you with a preconfigured AD-Server filled with **users** to test against. Have a look at `scripts/users.csv` to see what's available. They all have the password `Foo_b_ar123!`. The default password policy is in effect, but MinPasswordAge and PasswordHistory have been disabled. For all accounts password expiration has been disabled.
 
-To get started, install `vagrant` and `virtualbox` and clone this repository. In the repo run the following to **start the server**:
+To get started, install `vagrant` plus either `virtualbox`, or `libvirt` with the `vagrant-libvirt` plugin. Then clone this repository and run the following to **start the server**:
 
     vagrant up
 
+To force a specific provider when both are installed:
+
+    vagrant up --provider=libvirt
+
+The VM is reachable on the host at **`192.168.56.5`**.
+
 **Login to Windows** in using rdesktop with username `EXAMPLE\vagrant` password `vagrant`:
 
-    rdesktop -d EXAMPLE -u vagrant -p vagrant localhost:53389
+    rdesktop -d EXAMPLE -u vagrant -p vagrant 192.168.56.5
 
-The machine will map the **LDAP** Ports to `7389` (ldap) and `7636` (ldaps) on the `localhost`. Here's the data you may need to connect:
+For **LDAP** access, here's the data you may need to connect:
 
     base_dn:        DC=example,DC=local
     domain:         example.local
     netbios domain: EXAMPLE
+    ldap host:      192.168.56.5 (port 389)
+    ldaps host:     192.168.56.5 (port 636)
     user:           vagrant@example.local
     password:       vagrant
 
