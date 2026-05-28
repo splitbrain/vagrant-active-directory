@@ -39,6 +39,7 @@ if (-Not(Get-ADGroup -F { Name -eq "omega nested" }))
 # Import users from CSV (based on https://bit.ly/3as7DIH)
 $ADUsers = Import-csv "c:\vagrant\scripts\users.csv"
 Write-Output "Creating Users..."
+$groupMembers = @{}
 foreach ($User in $ADUsers)
 {
     $Username = "$($User.first.SubString(0,1)).$($User.last)".toLower()
@@ -71,19 +72,21 @@ foreach ($User in $ADUsers)
             -Title $User.title `
             -PasswordNeverExpires $True
 
-        if ($User.group1)
+        foreach ($group in @($User.group1, $User.group2, $User.group3))
         {
-            Add-ADGroupMember $User.group1 $Username
-        }
-        if ($User.group2)
-        {
-            Add-ADGroupMember $User.group2 $Username
-        }
-        if ($User.group3)
-        {
-            Add-ADGroupMember $User.group3 $Username
+            if ($group)
+            {
+                if (-not $groupMembers.ContainsKey($group)) { $groupMembers[$group] = @() }
+                $groupMembers[$group] += $Username
+            }
         }
     }
+}
+
+Write-Output "Assigning group memberships..."
+foreach ($group in $groupMembers.Keys)
+{
+    Add-ADGroupMember -Identity $group -Members $groupMembers[$group]
 }
 
 # custom user with a very long name in UserPrincipalName
